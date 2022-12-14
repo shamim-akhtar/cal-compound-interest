@@ -1,0 +1,383 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Compound Interest Calculator</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+
+<script>
+
+var g_chart_1 = null;
+function toFixed(value, preci) 
+{
+  	var precision = preci || 0,
+    	power = Math.pow(10, precision),
+    	absValue = Math.abs(Math.round(value * power)),
+    	result = (value < 0 ? '-' : '') + String(Math.floor(absValue / power));
+
+  	if (precision > 0) {
+    	var fraction = String(absValue % power),
+      	padding = new Array(Math.max(precision - fraction.length, 0) + 1).join('0');
+    	result += '.' + padding + fraction;
+  	}
+  	return result;
+}
+
+function CreateChart_TotalBalances()
+{
+	//if(chart_total_balances != null) return;
+    var chart_total_balances;
+    var mydata = 
+    {
+    	labels: [],
+        datasets: []
+    };
+	var ctx = document.getElementById('chart_TOTAL_BALANCES');    
+	var chartOptions = 
+    {
+  		legend: 
+        {
+    		display: true,
+    		position: 'bottom',
+    		labels: 
+        	{
+     			boxWidth: 15,
+      			fontColor: 'black'
+    		}
+  		},
+		title: 
+        {
+			display: true,
+			text: 'Total Balance'
+		},
+    	responsive: true,
+        maintainAspectRatio: false,
+        scales: 
+        {
+            yAxes: [
+            {
+                ticks: 
+                {
+                    beginAtZero: true,
+                    callback: function(value, index, values) 
+                    {                        
+                        var ranges = 
+                        [
+                            { divider: 1e6, suffix: 'M' },
+                            { divider: 1e3, suffix: 'k' }
+                        ];
+                        function formatNumber(n) 
+                        {
+                            for (var i = 0; i < ranges.length; i++) 
+                            {
+                                if (n >= ranges[i].divider) 
+                                {
+                                	return (n / ranges[i].divider).toString() + ranges[i].suffix;
+                                }
+                            }
+                            return n;
+                        }
+                        return '$' + formatNumber(value);
+                    }
+                }
+            }]
+        },
+        tooltips: 
+        {
+            enabled: true,
+            mode: 'single',
+            callbacks: 
+            {
+                title: function(tooltipItems, data) 
+                {
+                    var label = data.datasets[tooltipItems[0].datasetIndex].label || '';
+                    return label; //"Age: " + tooltipItems[0].xLabel;
+                },
+                label: function(tooltipItems, data) 
+                {
+                    var label = data.datasets[tooltipItems.datasetIndex].label || '';
+                    if (label) 
+                    {
+                        label += ': ';
+                    }
+                    return " Year:" + tooltipItems.xLabel + " | " + 
+                        tooltipItems.yLabel.toLocaleString("en-SG",{style:"currency", currency:"SGD"});
+                }
+            }
+        }
+	};
+	chart_total_balances = new Chart(ctx, 
+    {
+    	type: 'line',
+    	data: mydata,
+    	options: chartOptions
+	});
+    document.getElementById('chart_TOTAL_BALANCES').style.display = "none"; 
+
+    return chart_total_balances;
+}
+
+
+function getRandomColor() 
+{
+  	var letters = '0123456789ABCDEF';
+  	var color = '#';
+  	for (var i = 0; i < 6; i++) 
+    {
+    	color += letters[Math.floor(Math.random() * 16)];
+  	}
+  	return color;
+}
+
+function DrawChart_TotalBalances(chart_total_balances, data_collection)
+{
+	var balances = [];
+    var labels = [];
+    for(var k in data_collection[0])
+    {
+        labels.push(data_collection[0][k].x); 
+    }
+    
+	var newDataSet1 =
+    {
+    	label: "Balance",
+    	data: data_collection[0],
+    	fill: false,
+        
+    	borderColor: '#581845',
+    	backgroundColor: getRandomColor(),
+    	borderCapStyle: 'square',
+        borderWidth: 2,
+        pointRadius: 2
+    };
+    
+    var newDataSet2 =
+    {
+    	label: "Balance - Lower Bound",
+    	data: data_collection[1],
+    	fill: false,
+        
+    	borderColor: '#FFC300',
+    	backgroundColor: getRandomColor(),
+    	borderCapStyle: 'square',
+        borderWidth: 1,
+        pointRadius: 2
+    };
+    
+    var newDataSet3 =
+    {
+    	label: "Balance - Upper Bound",
+    	data: data_collection[2],
+    	fill: false,
+        
+    	borderColor: '#C70039',
+    	backgroundColor: getRandomColor(),
+    	borderCapStyle: 'square',
+        borderWidth: 1,
+        pointRadius: 2
+    };
+    chart_total_balances.data.labels = labels;
+    chart_total_balances.data.datasets.push(newDataSet1);
+    chart_total_balances.data.datasets.push(newDataSet2);
+    chart_total_balances.data.datasets.push(newDataSet3);
+    chart_total_balances.update();
+}
+
+function Calculate()
+{
+	var principal = document.getElementById("inputInitialAmount").value;
+	var freq = document.getElementById("inputFrequency").value;
+	var time = parseFloat(document.getElementById("inputYears").value) + 1;
+    if(time <= 0)
+        time = 1;
+	var range = document.getElementById("inputRange").value;
+    var pmt = document.getElementById("inputMonthlyTopUp").value;
+    if(pmt <= 0)
+        pmt = 0;
+    
+    var n = 1;
+    switch(freq)
+    {
+   		case "Yearly":
+        	n = 1;
+            break;
+            
+   		case "Half-Yearly":
+        	n = 2;
+            break;
+        
+   		case "Quaterly": 
+        	n = 4;
+            break;
+        
+   		case "Monthly": 
+        	n = 12;
+            break;
+        
+   		// case "Daily": 
+        // 	n = 365;
+        //     break;
+
+    }
+	var rate = document.getElementById("inputInterest").value;
+
+	// const compoundInterest = (p, t, r, n) => 
+    // {
+   	// 	var amount = p * (Math.pow((1 + (r / (100*n))), (n * t)));
+   	// 	return amount;
+	// };
+
+	const compoundInterest = (p, t, r, n, pmt) => 
+    {
+        var rn = (r / (100*n));
+        var vr = Math.pow((1 + rn), (n * t));
+   		var amount = p * vr + pmt * 12/n * (vr - 1)/rn;
+   		return amount;
+	};
+    
+    var all_total_balances = [];
+    var total_balance = [];
+    for (let i = 0; i < time; i++) {
+    	var v = compoundInterest(principal, i, rate, n, pmt);
+        total_balance.push(
+        {
+        	x: i,
+            y: toFixed(v, 2)
+        });
+    }
+    all_total_balances.push(total_balance);
+
+    var rate_min = parseFloat(rate) - parseFloat(range);
+    if(rate_min < 0) rate_min = 0;
+    total_balance = [];
+    for (let i = 0; i < time; i++) {
+    	var v = compoundInterest(principal, i, rate_min, n, pmt);
+        total_balance.push(
+        {
+        	x: i,
+            y: toFixed(v, 2)
+        });
+    }
+    all_total_balances.push(total_balance);
+
+    var rate_max = parseFloat(rate) + parseFloat(range);
+    if(rate_max > 100) rate_max = 100;
+    total_balance = [];
+    for (let i = 0; i < time; i++) {
+        var v = compoundInterest(principal, i, rate_max, n, pmt);
+        total_balance.push(
+        {
+            x: i,
+            y: toFixed(v, 2)
+        });
+    }
+    all_total_balances.push(total_balance);
+
+
+    return all_total_balances;
+}
+
+function OnClickCalculate()
+{
+    if(g_chart_1 == null)
+    {
+        g_chart_1 = CreateChart_TotalBalances();
+    }
+    g_chart_1.data.datasets = [];
+    g_chart_1.update();
+
+    var total_balance = Calculate();
+    DrawChart_TotalBalances(g_chart_1, total_balance);
+    
+    var time = document.getElementById("inputYears").value;
+    var txt = "<h6>After <span class=\"badge badge-secondary\">" + 
+        time + "</span> years, you will have <span class=\"badge badge-primary\">$" + 
+            total_balance[0][total_balance[0].length-1].y + "</span></h>."; 
+    document.getElementById('account_balance').innerHTML = txt;
+
+    // show the controls.
+    document.getElementById("analysis_area").style.display = "block";
+    document.getElementById('chart_TOTAL_BALANCES').style.display = "block";
+}
+
+function OnClickReset()
+{
+    var x = document.getElementById("analysis_area").style.display = "none";
+}
+</script>
+
+<div class="container">
+<form id="simulator-form" class="needs-validation" method="post" novalidate="">
+    <div class="card">
+    
+    <h5 class="card-header">Compound Interest Calculator</h5>
+    <div class="card-body">
+    
+    <div class="form-row">
+        <div class="form-group col-md-4">
+        <label for="inputInitialAmount">Initial Amount / Principal</label>
+        <input type="number" class="form-control" id="inputInitialAmount" value="1000.00" required="" step="0.1" min="0.0" max="100.0">
+        </div>
+        <div class="form-group col-md-4">
+        <label for="inputMonthlyTopUp">Monthly Top-up</label>
+        <input type="number" class="form-control" id="inputMonthlyTopUp" value="0" required="" step="0.5" min="0.0" max="5.0">
+        </div>
+        
+        <div class="form-group col-md-4">
+        <label for="inputYears">Time in Years</label>
+        <input type="number" class="form-control" id="inputYears" value="4" required="" step="1" min="0.0" max="100.0">
+        </div>
+    </div>
+  
+    <div class="form-row">
+        <div class="form-group col-md-4">
+        <label for="inputFrequency">Compound Frequency</label>
+        <select id="inputFrequency" class="form-control">
+            <option selected="">Yearly</option>
+            <option>Half-Yearly</option>
+            <option>Quaterly</option>
+            <option>Monthly</option>
+            <!--<option>Daily</option>-->
+        </select>
+        </div>
+        <div class="form-group col-md-4">
+        <label for="inputInterest">Interest Per Year</label>
+        <input type="number" class="form-control" id="inputInterest" value="4.00" required="" step="0.1" min="0.0" max="100.0">
+        </div>
+        <div class="form-group col-md-4">
+        <label for="inputRange">Interest Range</label>
+        <input type="number" class="form-control" id="inputRange" value="0" required="" step="0.5" min="0.0" max="5.0">
+        </div>
+    </div>
+
+    <hr>   
+        <div class="form-group">
+            <input type="button" class="btn btn-primary" value="Calculate" onclick="OnClickCalculate()">
+            <input type="button" class="btn btn-secondary" value="Reset" onclick="OnClickReset()">
+        </div>
+        </div>
+        </div>
+    </form>  
+</div>
+
+
+
+<div class="container" id="analysis_area" style="display: none;">
+  <div class="card">    
+    <h5 class="card-header">Result</h5>
+    
+      <div class="card-body" id="account_balance">
+      	<h6 class="card-title" id="acc_bal_text"></h6>
+      </div>
+      
+      <div>
+  		<div class="row">
+    		<div class="col-sm-12" style=" height: 400px; width: 100%;">
+    			<canvas id="chart_TOTAL_BALANCES"></canvas>
+  			</div>
+  		</div>
+      </div>
+      
+  </div>
+</div>
